@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Link2,
   BarChart3,
+  Trash2,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { StatCard } from "@/components/StatCard";
@@ -16,9 +17,11 @@ import { UrlScanner } from "@/components/UrlScanner";
 import { ChatAdvisor } from "@/components/ChatAdvisor";
 import {
   ModelMetrics,
+  RecentScansList,
   ScanDistributionChart,
   ThreatTrendChart,
 } from "@/components/Charts";
+import { useScanHistory, summarize, clearHistory } from "@/lib/scan-history";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
