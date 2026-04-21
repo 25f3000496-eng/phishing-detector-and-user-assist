@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { streamAI, tryParseVerdict, type Verdict } from "@/lib/ai-stream";
+import { recordScan } from "@/lib/scan-history";
 
 export type ScannerInput =
   | { kind: "email"; sender: string; subject: string; content: string }
