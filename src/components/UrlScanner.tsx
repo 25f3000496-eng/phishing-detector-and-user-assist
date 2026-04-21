@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link2, FlaskConical } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link2, FlaskConical, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { VerdictPanel } from "./VerdictPanel";
@@ -14,15 +14,43 @@ export function UrlScanner({
   onContextChange: (ctx: string) => void;
 }) {
   const [url, setUrl] = useState("");
+  // The URL we actually submit for analysis. Empty until the user clicks Analyze.
+  const [submittedUrl, setSubmittedUrl] = useState("");
 
-  const { verdict, isStreaming, error } = useLiveVerdict({ kind: "url", url });
+  const { verdict, isStreaming, error } = useLiveVerdict({
+    kind: "url",
+    url: submittedUrl,
+  });
 
-  if (typeof window !== "undefined") {
-    const ctx = url
-      ? `URL scan in progress.\nURL: ${url}\nCurrent verdict: ${verdict?.verdict ?? "pending"} (score ${verdict?.score ?? 0})`
+  // expose context to chat (only after submit, and only on the client to avoid SSR mismatch)
+  useEffect(() => {
+    const ctx = submittedUrl
+      ? `URL scan in progress.\nURL: ${submittedUrl}\nCurrent verdict: ${verdict?.verdict ?? "pending"} (score ${verdict?.score ?? 0})`
       : "";
-    queueMicrotask(() => onContextChange(ctx));
-  }
+    onContextChange(ctx);
+  }, [submittedUrl, verdict, onContextChange]);
+
+  const analyze = () => {
+    const trimmed = url.trim();
+    if (trimmed.length < 4) return;
+    // force a re-run even if the same URL is analyzed twice by toggling whitespace
+    setSubmittedUrl((prev) => (prev === trimmed ? trimmed + " " : trimmed));
+    setTimeout(() => setSubmittedUrl(trimmed), 0);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      analyze();
+    }
+  };
+
+  const clearAll = () => {
+    setUrl("");
+    setSubmittedUrl("");
+  };
+
+  const canAnalyze = url.trim().length >= 4 && !isStreaming;
 
   return (
     <div className="grid lg:grid-cols-5 gap-6">
@@ -35,13 +63,38 @@ export function UrlScanner({
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground">Suspicious URL or domain</label>
-          <Input
-            placeholder="https://example.com/login"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className="mt-1 bg-background/40 font-mono"
-          />
+          <label className="text-xs text-muted-foreground">
+            Enter any URL or domain to analyze
+          </label>
+          <div className="mt-1 flex flex-col sm:flex-row gap-2">
+            <Input
+              placeholder="https://example.com/login"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={onKeyDown}
+              className="bg-background/40 font-mono flex-1"
+            />
+            <Button
+              onClick={analyze}
+              disabled={!canAnalyze}
+              className="bg-gradient-to-br from-cyan to-primary text-primary-foreground font-bold glow-cyan hover:scale-[1.02] transition-transform shrink-0"
+            >
+              {isStreaming ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Analyzing…
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4" />
+                  Analyze URL
+                </>
+              )}
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1.5">
+            Tip: paste any URL you received and press Enter or click Analyze.
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -52,7 +105,7 @@ export function UrlScanner({
             className="border-danger/40 text-danger hover:bg-danger/10"
           >
             <FlaskConical className="h-3.5 w-3.5" />
-            Phishing URL
+            Try phishing sample
           </Button>
           <Button
             variant="outline"
@@ -61,9 +114,9 @@ export function UrlScanner({
             className="border-safe/40 text-safe hover:bg-safe/10"
           >
             <FlaskConical className="h-3.5 w-3.5" />
-            Safe URL
+            Try safe sample
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setUrl("")}>
+          <Button variant="ghost" size="sm" onClick={clearAll}>
             Clear
           </Button>
         </div>
@@ -95,7 +148,11 @@ export function UrlScanner({
           </span>
           Live AI verdict
         </p>
-        <VerdictPanel verdict={verdict} isStreaming={isStreaming} empty={!url} />
+        <VerdictPanel
+          verdict={verdict}
+          isStreaming={isStreaming}
+          empty={!submittedUrl}
+        />
       </div>
     </div>
   );
