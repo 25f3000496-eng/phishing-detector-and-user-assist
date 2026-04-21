@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mail, FlaskConical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,14 +36,14 @@ export function EmailScanner({
     content,
   });
 
-  // expose context to chat
-  if (typeof window !== "undefined") {
+  // expose context to chat (in effect to avoid SSR/CSR mismatch)
+  useEffect(() => {
     const ctx =
       sender || subject || content
         ? `Email scan in progress.\nFrom: ${sender}\nSubject: ${subject}\nBody: ${content.slice(0, 400)}\nCurrent verdict: ${verdict?.verdict ?? "pending"} (score ${verdict?.score ?? 0})`
         : "";
-    queueMicrotask(() => onContextChange(ctx));
-  }
+    onContextChange(ctx);
+  }, [sender, subject, content, verdict, onContextChange]);
 
   const load = (s: typeof PHISHING_SAMPLE) => {
     setSender(s.sender);
