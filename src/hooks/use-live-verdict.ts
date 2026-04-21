@@ -57,7 +57,27 @@ export function useLiveVerdict(input: ScannerInput) {
         },
       });
       const final = tryParseVerdict(raw);
-      if (final) setVerdict(final);
+      if (final) {
+        setVerdict(final);
+        if (
+          final.verdict &&
+          typeof final.score === "number" &&
+          ["safe", "suspicious", "phishing"].includes(final.verdict)
+        ) {
+          recordScan({
+            kind: target.kind,
+            verdict: final.verdict as "safe" | "suspicious" | "phishing",
+            score: final.score,
+            summary: final.summary,
+            target:
+              target.kind === "url"
+                ? target.url.trim().slice(0, 120)
+                : (target.subject || target.sender || target.content)
+                    .trim()
+                    .slice(0, 120),
+          });
+        }
+      }
     } catch (e: any) {
       if (e?.name !== "AbortError") {
         setError(e?.message ?? "Analysis failed");
